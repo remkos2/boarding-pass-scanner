@@ -1,51 +1,70 @@
-# Flight Ticket Barcode Scanner
+# Boarding Pass Scanner
 
-A fully local, offline boarding-pass scanner. No internet, no installs, no data leaves your computer.
+Read the barcode on a flight boarding pass straight from a photo, entirely in your browser. Drop in a picture and it shows the passenger, route, flight, date, seat, cabin class and booking reference. Nothing is uploaded and there is no server.
 
-## How to use
+**Live demo:** https://remkos2.github.io/boarding-pass-scanner/
 
-1. Double-click **`index.html`** and it opens in your browser.
-2. Drag in a photo of a boarding pass, click to choose one, or paste with Ctrl+V.
-3. The decoded details appear: passenger, route, flight, date, seat, cabin, booking reference (PNR), and check-in status.
+## What it does
 
-Works on both your computers since it lives in OneDrive.
+Boarding passes store their details in a 2D barcode (PDF417 on printed passes, Aztec on mobile passes), written in the IATA BCBP format. This tool decodes that barcode from a photo and turns it into readable fields:
 
-## What it reads
+- Passenger name
+- Route (departure and arrival airports)
+- Flight number and airline
+- Date of travel
+- Seat and cabin class
+- Booking reference (PNR)
+- Check-in status
 
-Boarding passes store their data in a 2D barcode: **PDF417** on paper printouts and **Aztec** on mobile passes. Both encode the IATA "BCBP" string, which this tool decodes and parses. QR and Data Matrix are also attempted as a fallback.
+PDF417, Aztec, QR and Data Matrix are all supported.
 
-Decoding uses the **zxing-cpp** engine compiled to WebAssembly, the same high-accuracy engine used by professional tools, bundled locally so it runs fully offline.
+## Why it is different
 
-## Tips for a good scan
+- **Private by design.** Everything runs locally in your browser. The image never leaves your device and nothing is stored.
+- **Fully offline.** The decoding engine is bundled inside the page, so it works with no internet connection. You can save the page and open it as a local file.
+- **No install, no backend, no tracking.** It is a single static page.
 
-- Crop the photo to mostly the barcode, shot straight-on.
-- Avoid glare and blur; more pixels on the barcode is better.
-- A clean screenshot of a mobile pass works best of all.
+## How to use it
 
-Note on partial barcodes: 2D barcodes carry error correction, so the engine tolerates some dirt, glare, or minor damage. But a barcode that is physically cut off (missing whole rows/columns) usually cannot be decoded, because the missing data can't be reconstructed.
+**Online:** open the live demo, then drop in a photo, click to choose one, or paste an image with Ctrl+V.
 
-## Putting it online (Google Sites)
+**Offline on your own machine:** click `Code`, then `Download ZIP`, unzip it, and double-click `index.html`. It works the same way with no internet.
 
-The whole tool is self-contained, so it runs from any public web address with no backend.
+For the best result use a sharp, straight-on photo with the barcode filling the frame and no glare. A screenshot of a mobile pass works particularly well.
 
-1. Create a **public GitHub repo** and upload this folder's contents (`index.html` + the
-   `lib/` folder, structure intact).
-2. Repo → **Settings → Pages** → deploy from branch `main`, folder `/ (root)`. After a
-   minute you get `https://<username>.github.io/<repo>/`.
-3. In Google Sites: **Insert → Embed → Embed code**, then paste:
-   ```html
-   <iframe src="https://<username>.github.io/<repo>/"
-           style="width:100%;height:900px;border:0;"
-           allow="clipboard-read; clipboard-write"></iframe>
-   ```
-   Place it, resize, Publish.
+## Limitations
 
-Inside the Google Sites frame the file picker works; Ctrl+V paste may be blocked by
-Google's sandbox (a Google limitation, not the tool).
+2D barcodes carry error correction, so the engine copes well with glare, blur and minor damage. A barcode that is physically cut off, with whole rows or columns missing from the photo, cannot be decoded, because the missing data cannot be reconstructed. There is no partial read: the barcode either resolves in full or not at all.
 
-## Files
+## Embedding it on a website
 
-- `index.html`: the scanner (open this, or double-click it locally).
-- `lib/zxing-reader.iife.js`: the decoding engine (zxing-cpp), kept local.
-- `lib/zxing-wasm-binary.js`: the engine's WebAssembly module embedded as text, so the page never needs to download or fetch anything.
-- `LICENSE` and `THIRD-PARTY-NOTICES.md`: your MIT license plus attribution for the bundled engine.
+I built this to sit on my own website, which runs on Google Sites. Google Sites cannot host a multi-file app directly, so it loads the published page inside a frame. This is the embed I use, pointing at my own deployed copy:
+
+```html
+<iframe src="https://remkos2.github.io/boarding-pass-scanner/"
+        style="width:100%;height:900px;border:0;"
+        allow="clipboard-read; clipboard-write"></iframe>
+```
+
+If you want to do the same, deploy your own copy (GitHub Pages works well) and swap in your URL. Inside an embedded frame the file picker works normally, but Ctrl+V paste may be blocked by the host's sandbox.
+
+## How it works under the hood
+
+- The interface and the BCBP parser are plain HTML and JavaScript, with no framework.
+- Decoding is handled by zxing-cpp compiled to WebAssembly (via zxing-wasm), bundled in `lib/` as text so the page never has to fetch anything.
+
+## Repository structure
+
+```
+index.html                 the app
+lib/zxing-reader.iife.js   decoding engine (zxing-wasm)
+lib/zxing-wasm-binary.js   engine WebAssembly, embedded as base64 text
+LICENSE                    MIT license for this project
+THIRD-PARTY-NOTICES.md     attribution for the bundled engine
+```
+
+## Credits and license
+
+This project is released under the MIT license (see `LICENSE`). Barcode decoding uses the open-source [zxing-wasm](https://github.com/Sec-ant/zxing-wasm) (MIT) by Ze-Zheng Wu, built on [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp) (Apache-2.0). Full attribution is in `THIRD-PARTY-NOTICES.md`.
+
+Built by Remko Stas.
