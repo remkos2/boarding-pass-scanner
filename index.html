@@ -6,25 +6,34 @@
 <title>Flight Ticket Barcode Scanner</title>
 <meta name="author" content="Remko Stas">
 <meta name="description" content="A private, offline boarding-pass barcode scanner by Remko Stas. Reads PDF417 and Aztec boarding passes locally in your browser.">
-<meta name="color-scheme" content="dark">
+<script>if(/theme=dark/i.test(location.search))document.documentElement.classList.add('dark');</script>
 <style>
+  /* Light theme by default (matches a white site). Add ?theme=dark to the
+     URL to switch to dark, without editing this file. */
   :root{
-    --bg:#0d1017; --bg2:#0a0d13; --panel:#161b22;
+    color-scheme:light;
+    --bg2:#f1f4f8; --panel:#f6f8fb;
+    --line:#dce2ea; --text:#1b2430; --muted:#5b6675;
+    --accent:#2563eb; --accent2:#4f46e5; --good:#1a7f37; --bad:#cf222e;
+    --radius:14px; --shadow:0 8px 24px rgba(20,30,50,.10); --tint:rgba(37,99,235,.10);
+  }
+  html.dark{
+    color-scheme:dark;
+    --bg2:#0a0d13; --panel:#161b22;
     --line:#272e3a; --text:#e8eef5; --muted:#8b97a7;
     --accent:#3b82f6; --accent2:#6366f1; --good:#3fb950; --bad:#f85149;
-    --radius:14px;
+    --shadow:0 10px 30px rgba(0,0,0,.35); --tint:rgba(59,130,246,.14);
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
+  html,body{background:transparent}
   body{
     margin:0; color:var(--text); line-height:1.55;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:
-      radial-gradient(900px 480px at 50% -12%, rgba(59,130,246,.13), transparent 60%),
-      var(--bg);
-    min-height:100vh;
   }
-  .wrap{max-width:680px; margin:0 auto; padding:44px 20px 72px}
+  /* Transparent page: the tool shows the host site's background through it,
+     so it looks white on a white site and dark on a dark site (?theme=dark). */
+  .wrap{max-width:680px; margin:0 auto; padding:26px 20px 36px}
 
   header.head{display:flex; align-items:center; gap:14px; margin-bottom:10px}
   .logo{
@@ -43,11 +52,11 @@
     background:linear-gradient(180deg,var(--panel),var(--bg2));
     transition:border-color .18s, background .18s, transform .18s;
   }
-  #drop:hover{border-color:#3a465a}
-  #drop.hover{border-color:var(--accent); background:linear-gradient(180deg,#1b2741,#10131b); transform:translateY(-1px)}
+  #drop:hover{border-color:var(--accent)}
+  #drop.hover{border-color:var(--accent); transform:translateY(-1px)}
   .drop-ic{
     width:54px; height:54px; border-radius:50%; display:grid; place-items:center;
-    background:rgba(59,130,246,.12); color:var(--accent); margin-bottom:14px;
+    background:var(--tint); color:var(--accent); margin-bottom:14px;
   }
   .drop-ic svg{width:26px; height:26px}
   #drop .big{font-size:15.5px; font-weight:500}
@@ -56,7 +65,7 @@
   input[type=file]{display:none}
 
   #preview{margin-top:18px; display:none; text-align:center}
-  #preview img{max-width:100%; max-height:260px; border-radius:10px; border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  #preview img{max-width:100%; max-height:260px; border-radius:10px; border:1px solid var(--line); box-shadow:var(--shadow)}
 
   .status{margin-top:16px; font-size:13.5px; min-height:20px; display:flex; align-items:center; gap:8px}
   .status:empty{display:none}
@@ -75,10 +84,10 @@
   .opentab:hover{text-decoration:underline}
 
   .card{
-    background:linear-gradient(180deg,var(--panel),var(--bg2));
+    background:var(--panel);
     border:1px solid var(--line); border-radius:var(--radius);
     padding:22px 22px 20px; margin-top:20px; display:none;
-    box-shadow:0 10px 30px rgba(0,0,0,.35);
+    box-shadow:var(--shadow);
     animation:rise .25s ease both;
   }
   @keyframes rise{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
@@ -98,7 +107,7 @@
   .legtag{
     display:inline-block; font-size:10.5px; color:var(--accent); font-weight:700;
     letter-spacing:.06em; margin-bottom:12px; padding:3px 10px;
-    background:rgba(59,130,246,.12); border-radius:20px;
+    background:var(--tint); border-radius:20px;
   }
 
   .raw{
@@ -112,7 +121,7 @@
     border-radius:9px; padding:9px 16px; cursor:pointer; font-size:13px; font-weight:600;
     transition:border-color .15s, background .15s;
   }
-  .copy:hover{border-color:var(--accent); background:rgba(59,130,246,.08)}
+  .copy:hover{border-color:var(--accent); background:var(--tint)}
 
   .foot{
     margin-top:44px; padding-top:18px; border-top:1px solid var(--line);
@@ -161,7 +170,7 @@
     Barcode decoding by the open-source
     <a href="https://github.com/Sec-ant/zxing-wasm" target="_blank" rel="noopener">zxing-cpp / zxing-wasm</a>
     engine (MIT &amp; Apache-2.0). Full credits in THIRD-PARTY-NOTICES.md.<br>
-    <span style="opacity:.6">Build 2026-06-06b</span>
+    <span style="opacity:.6">Build 2026-06-06d</span>
   </footer>
 </div>
 
