@@ -67,6 +67,13 @@
   .status.work::before{animation:pulse 1s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
+  .opentab{
+    display:none; margin-top:12px; font-size:13px; font-weight:600;
+    color:var(--accent); text-decoration:none;
+  }
+  .opentab.show{display:inline-block}
+  .opentab:hover{text-decoration:underline}
+
   .card{
     background:linear-gradient(180deg,var(--panel),var(--bg2));
     border:1px solid var(--line); border-radius:var(--radius);
@@ -137,6 +144,7 @@
 
   <div id="preview"><img id="previewImg" alt="preview"></div>
   <div class="status" id="status"></div>
+  <a class="opentab" id="opentab" target="_blank" rel="noopener">Open the scanner in a new tab</a>
 
   <div class="card" id="result">
     <h2>Boarding pass</h2>
@@ -152,7 +160,8 @@
     Runs entirely in your browser, nothing is uploaded or stored.<br>
     Barcode decoding by the open-source
     <a href="https://github.com/Sec-ant/zxing-wasm" target="_blank" rel="noopener">zxing-cpp / zxing-wasm</a>
-    engine (MIT &amp; Apache-2.0). Full credits in THIRD-PARTY-NOTICES.md.
+    engine (MIT &amp; Apache-2.0). Full credits in THIRD-PARTY-NOTICES.md.<br>
+    <span style="opacity:.6">Build 2026-06-06b</span>
   </footer>
 </div>
 
@@ -171,7 +180,21 @@
   const legsEl = document.getElementById('legs');
   const rawEl = document.getElementById('raw');
   const copyBtn = document.getElementById('copyBtn');
+  const opentabEl = document.getElementById('opentab');
   let lastRaw = '';
+
+  // When embedded in another site, offer a link to open this page standalone.
+  function showOpenInTab(){ opentabEl.href = location.href; opentabEl.classList.add('show'); }
+  function hideOpenInTab(){ opentabEl.classList.remove('show'); }
+
+  // Never fail silently: surface any unexpected script error in the status line.
+  window.addEventListener('error', ev=>{
+    setStatus('Script error: ' + (ev.message || 'unknown') + '. Try a hard refresh (Ctrl+Shift+R).', 'err');
+  });
+  window.addEventListener('unhandledrejection', ev=>{
+    const m = (ev.reason && ev.reason.message) || ev.reason || 'unknown';
+    setStatus('Error while scanning: ' + m, 'err');
+  });
 
   // Feed the embedded wasm bytes to the engine so it never has to fetch
   // anything; this is what lets the page work as a plain double-clicked file.
@@ -319,43 +342,59 @@
       ['2x upscale',      ()=>imageDataFrom(img,2,false)],
       ['2x + contrast',   ()=>imageDataFrom(img,2,true)],
     ];
+    let ran = 0, lastErr = null;
     for(let i=0;i<variants.length;i++){
       const [name, build] = variants[i];
       setStatus(`Scanning... (${name})`, 'work');
       await new Promise(r=>setTimeout(r,0));
       try{
         const results = await ZXingWASM.readBarcodes(build(), READER_OPTS);
+        ran++;
         const hit = (results||[]).find(r=>r.text);
-        if(hit) return hit;
-      }catch(e){ /* try next variant */ }
+        if(hit) return { hit };
+      }catch(e){ lastErr = e; }
     }
-    return null;
+    // If no attempt even ran, the decoding engine itself failed to start.
+    if(ran === 0 && lastErr) return { engineError: lastErr };
+    return { none: true };
   }
 
   async function handleImage(src){
-    resultEl.style.display='none'; rawEl.style.display='none';
+    resultEl.style.display='none'; rawEl.style.display='none'; hideOpenInTab();
     previewImg.src = src; previewEl.style.display='block';
     setStatus('Scanning...','work');
     let img;
     try{ img = await loadImage(src); }
     catch(e){ setStatus('Could not load that image.','err'); return; }
 
-    const hit = await decode(img);
-    if(!hit){
-      setStatus('Could not read a barcode. Try a sharper, straight-on photo with the barcode filling the frame and no glare. A screenshot of a mobile pass works best.','err');
+    const res = await decode(img);
+    if(res.engineError){
+      setStatus('The barcode engine could not start inside this embedded page. Open the scanner in its own tab with the link below and it will work.','err');
+      showOpenInTab();
+      statusEl.scrollIntoView({behavior:'smooth', block:'center'});
       return;
     }
+    if(res.none){
+      setStatus('Could not read a barcode in that photo. Try a sharper, straight-on shot with the barcode filling the frame and no glare. A barcode that is cut off at the edges cannot be read.','err');
+      statusEl.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+    const hit = res.hit;
     lastRaw = hit.text;
     const bcbp = parseBCBP(lastRaw);
     rawEl.innerHTML = `<b>Raw barcode (${hit.format||'?'}):</b><br>${lastRaw.replace(/</g,'&lt;')}`;
     rawEl.style.display='block';
     if(bcbp){ setStatus('Boarding pass decoded.','ok'); render(bcbp); }
     else{ setStatus('Barcode read, but it is not a standard boarding pass. Raw contents shown below.','ok'); }
+    resultEl.scrollIntoView({behavior:'smooth', block:'nearest'});
   }
 
   function handleFile(f){
-    if(!f || !f.type.startsWith('image/')){ setStatus('Please choose an image file.','err'); return; }
+    if(!f){ setStatus('No file selected.','err'); return; }
+    if(f.type && !f.type.startsWith('image/')){ setStatus('That file is not an image. Choose a JPG or PNG photo.','err'); return; }
+    setStatus('Reading file...','work');
     const r = new FileReader();
+    r.onerror = () => setStatus('Could not read that file. Try saving the photo as JPG or PNG and choose it again.','err');
     r.onload = e => handleImage(e.target.result);
     r.readAsDataURL(f);
   }
