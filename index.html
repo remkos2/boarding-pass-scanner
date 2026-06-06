@@ -126,14 +126,14 @@
   </header>
   <p class="sub">Drop in a photo of a boarding pass. Everything runs locally in your browser. Nothing is uploaded.</p>
 
-  <div id="drop">
+  <label id="drop">
     <div class="drop-ic" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
     </div>
     <div class="big"><b>Click to choose a photo</b> or drag it here</div>
     <p>You can also paste an image with Ctrl+V</p>
     <input type="file" id="file" accept="image/*">
-  </div>
+  </label>
 
   <div id="preview"><img id="previewImg" alt="preview"></div>
   <div class="status" id="status"></div>
@@ -361,7 +361,9 @@
   }
 
   // events
-  dropEl.addEventListener('click', ()=>fileEl.click());
+  // #drop is a <label> wrapping the file input, so a real click opens the
+  // picker natively. That works inside sandboxed embeds (e.g. Google Sites)
+  // where a scripted input.click() is blocked for lacking a user gesture.
   fileEl.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
   dropEl.addEventListener('dragover', e=>{e.preventDefault();dropEl.classList.add('hover');});
   dropEl.addEventListener('dragleave', ()=>dropEl.classList.remove('hover'));
