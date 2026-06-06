@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Ticket Barcode Scanner</title>
+<meta name="author" content="Remko Stas">
+<meta name="description" content="A private, offline boarding-pass barcode scanner by Remko Stas. Reads PDF417 and Aztec boarding passes locally in your browser.">
+<meta name="color-scheme" content="dark">
+<style>
+  :root{
+    --bg:#0d1017; --bg2:#0a0d13; --panel:#161b22;
+    --line:#272e3a; --text:#e8eef5; --muted:#8b97a7;
+    --accent:#3b82f6; --accent2:#6366f1; --good:#3fb950; --bad:#f85149;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; color:var(--text); line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(900px 480px at 50% -12%, rgba(59,130,246,.13), transparent 60%),
+      var(--bg);
+    min-height:100vh;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:44px 20px 72px}
+
+  header.head{display:flex; align-items:center; gap:14px; margin-bottom:10px}
+  .logo{
+    flex:none; width:46px; height:46px; border-radius:12px; display:grid; place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 6px 20px rgba(59,130,246,.35);
+  }
+  .logo svg{width:26px; height:26px; color:#fff}
+  h1{font-size:23px; font-weight:700; margin:0; letter-spacing:-.02em}
+  .sub{color:var(--muted); font-size:14.5px; margin:0 0 26px}
+
+  #drop{
+    position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:200px; border:1.5px dashed var(--line); border-radius:var(--radius);
+    padding:34px 22px; text-align:center; cursor:pointer;
+    background:linear-gradient(180deg,var(--panel),var(--bg2));
+    transition:border-color .18s, background .18s, transform .18s;
+  }
+  #drop:hover{border-color:#3a465a}
+  #drop.hover{border-color:var(--accent); background:linear-gradient(180deg,#1b2741,#10131b); transform:translateY(-1px)}
+  .drop-ic{
+    width:54px; height:54px; border-radius:50%; display:grid; place-items:center;
+    background:rgba(59,130,246,.12); color:var(--accent); margin-bottom:14px;
+  }
+  .drop-ic svg{width:26px; height:26px}
+  #drop .big{font-size:15.5px; font-weight:500}
+  #drop .big b{color:var(--accent); font-weight:700}
+  #drop p{margin:7px 0 0; color:var(--muted); font-size:12.5px}
+  input[type=file]{display:none}
+
+  #preview{margin-top:18px; display:none; text-align:center}
+  #preview img{max-width:100%; max-height:260px; border-radius:10px; border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.4)}
+
+  .status{margin-top:16px; font-size:13.5px; min-height:20px; display:flex; align-items:center; gap:8px}
+  .status:empty{display:none}
+  .status.err{color:var(--bad)}
+  .status.ok{color:var(--good)}
+  .status.work{color:var(--accent)}
+  .status::before{content:""; width:8px; height:8px; border-radius:50%; background:currentColor; flex:none}
+  .status.work::before{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--bg2));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 22px 20px; margin-top:20px; display:none;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+    animation:rise .25s ease both;
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+  .card h2{
+    font-size:11.5px; margin:0 0 16px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.08em; font-weight:700;
+    display:flex; align-items:center; gap:10px;
+  }
+  .card h2::after{content:""; flex:1; height:1px; background:var(--line)}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px 24px}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}}
+  .field label{display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px}
+  .field .val{font-size:16px; font-weight:600; word-break:break-word}
+  .field .val.big{font-size:21px; letter-spacing:-.01em}
+  .leg{border-top:1px solid var(--line); padding-top:18px; margin-top:18px}
+  .leg:first-of-type{border-top:none; padding-top:0; margin-top:0}
+  .legtag{
+    display:inline-block; font-size:10.5px; color:var(--accent); font-weight:700;
+    letter-spacing:.06em; margin-bottom:12px; padding:3px 10px;
+    background:rgba(59,130,246,.12); border-radius:20px;
+  }
+
+  .raw{
+    margin-top:18px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
+    color:var(--muted); background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+    padding:14px; word-break:break-all; display:none; line-height:1.7;
+  }
+  .raw b{color:var(--text)}
+  .copy{
+    margin-top:16px; background:transparent; color:var(--accent); border:1px solid var(--line);
+    border-radius:9px; padding:9px 16px; cursor:pointer; font-size:13px; font-weight:600;
+    transition:border-color .15s, background .15s;
+  }
+  .copy:hover{border-color:var(--accent); background:rgba(59,130,246,.08)}
+
+  .foot{
+    margin-top:44px; padding-top:18px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--muted); line-height:1.7;
+  }
+  .foot a{color:var(--accent); text-decoration:none}
+  .foot a:hover{text-decoration:underline}
+  .foot .by{color:var(--text); font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6v12M7 6v12M9 6v12M13 6v12M16 6v12M20 6v12"/></svg>
+    </div>
+    <h1>Flight Ticket Barcode Scanner</h1>
+  </header>
+  <p class="sub">Drop in a photo of a boarding pass. Everything runs locally in your browser. Nothing is uploaded.</p>
+
+  <div id="drop">
+    <div class="drop-ic" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    </div>
+    <div class="big"><b>Click to choose a photo</b> or drag it here</div>
+    <p>You can also paste an image with Ctrl+V</p>
+    <input type="file" id="file" accept="image/*">
+  </div>
+
+  <div id="preview"><img id="previewImg" alt="preview"></div>
+  <div class="status" id="status"></div>
+
+  <div class="card" id="result">
+    <h2>Boarding pass</h2>
+    <div id="header" class="grid"></div>
+    <div id="legs"></div>
+    <button class="copy" id="copyBtn">Copy raw barcode data</button>
+  </div>
+
+  <div class="raw" id="raw"></div>
+
+  <footer class="foot">
+    <span class="by">Flight Ticket Barcode Scanner</span> &middot; built by Remko Stas.
+    Runs entirely in your browser, nothing is uploaded or stored.<br>
+    Barcode decoding by the open-source
+    <a href="https://github.com/Sec-ant/zxing-wasm" target="_blank" rel="noopener">zxing-cpp / zxing-wasm</a>
+    engine (MIT &amp; Apache-2.0). Full credits in THIRD-PARTY-NOTICES.md.
+  </footer>
+</div>
+
+<!-- Local, offline barcode engine: zxing-cpp compiled to WebAssembly -->
+<script src="lib/zxing-wasm-binary.js"></script>
+<script src="lib/zxing-reader.iife.js"></script>
+<script>
+(function(){
+  const dropEl = document.getElementById('drop');
+  const fileEl = document.getElementById('file');
+  const statusEl = document.getElementById('status');
+  const previewEl = document.getElementById('preview');
+  const previewImg = document.getElementById('previewImg');
+  const resultEl = document.getElementById('result');
+  const headerEl = document.getElementById('header');
+  const legsEl = document.getElementById('legs');
+  const rawEl = document.getElementById('raw');
+  const copyBtn = document.getElementById('copyBtn');
+  let lastRaw = '';
+
+  // Feed the embedded wasm bytes to the engine so it never has to fetch
+  // anything; this is what lets the page work as a plain double-clicked file.
+  function b64ToBytes(b64){
+    const bin = atob(b64); const out = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+    return out;
+  }
+  ZXingWASM.setZXingModuleOverrides({ wasmBinary: b64ToBytes(window.ZXING_WASM_B64) });
+
+  const READER_OPTS = {
+    formats: ['PDF417','Aztec','QRCode','DataMatrix'],
+    tryHarder: true, tryRotate: true, tryInvert: true,
+    tryDownscale: true, maxNumberOfSymbols: 1
+  };
+
+  function setStatus(msg, cls){
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  // --- IATA BCBP parser (M1 format) ---------------------------------------
+  const COMPARTMENT = {F:'First',A:'First',J:'Business',C:'Business',D:'Business',
+    I:'Business',Z:'Business',W:'Premium economy',P:'Premium economy',
+    Y:'Economy',B:'Economy',H:'Economy',K:'Economy',L:'Economy',M:'Economy',
+    N:'Economy',Q:'Economy',R:'Economy',S:'Economy',T:'Economy',U:'Economy',
+    V:'Economy',X:'Economy',G:'Economy',E:'Economy',O:'Economy'};
+  const STATUS = {0:'Ticket issued, not checked in',1:'Ticket issued, not checked in',
+    2:'Baggage checked, seat assigned',3:'Checked in',4:'Passed security',
+    8:'Boarding data passed, seat assigned'};
+
+  function julianToDate(jjj){
+    const day = parseInt(jjj,10);
+    if(isNaN(day) || day<1 || day>366) return null;
+    const now = new Date();
+    let best=null, bestDiff=Infinity;
+    for(let y=now.getFullYear()-1; y<=now.getFullYear()+1; y++){
+      const d=new Date(y,0,day);
+      const diff=Math.abs(d-now);
+      if(diff<bestDiff){bestDiff=diff;best=d;}
+    }
+    return best;
+  }
+  function fmtDate(d){
+    if(!d) return null;
+    return d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  }
+  function clean(s){return (s||'').trim();}
+
+  function parseBCBP(data){
+    if(!data || data[0] !== 'M') return null;
+    let p = 0;
+    const take = n => { const s = data.substr(p,n); p+=n; return s; };
+    const out = {legs:[]};
+    take(1);
+    const legCount = parseInt(take(1),10) || 1;
+    out.name = clean(take(20));
+    if(out.name.includes('/')){
+      const [last,first]=out.name.split('/');
+      out.namePretty = clean(first)+' '+clean(last);
+    } else out.namePretty = out.name;
+    out.eticket = take(1) === 'E';
+
+    for(let i=0;i<legCount;i++){
+      const leg={};
+      leg.pnr = clean(take(7));
+      leg.from = clean(take(3));
+      leg.to = clean(take(3));
+      leg.carrier = clean(take(3));
+      leg.flight = clean(take(5)).replace(/^0+/,'');
+      leg.julian = clean(take(3));
+      leg.date = fmtDate(julianToDate(leg.julian));
+      const comp = clean(take(1));
+      leg.compartment = comp; leg.cabin = COMPARTMENT[comp] || '';
+      leg.seat = clean(take(4)).replace(/^0+/,'');
+      leg.sequence = clean(take(5)).replace(/^0+/,'');
+      const st = clean(take(1));
+      leg.status = STATUS[st] || ('Status '+st);
+      const size = parseInt(take(2),16);   // variable field length (hex)
+      if(!isNaN(size)) take(size);
+      out.legs.push(leg);
+    }
+    return out;
+  }
+
+  // --- Render --------------------------------------------------------------
+  function field(label,val,big){
+    if(val===''||val==null) return '';
+    return `<div class="field"><label>${label}</label><div class="val${big?' big':''}">${val}</div></div>`;
+  }
+  function render(bcbp){
+    headerEl.innerHTML =
+      field('Passenger', bcbp.namePretty, true) +
+      field('E-ticket', bcbp.eticket ? 'Yes' : 'No') +
+      field('Legs', bcbp.legs.length);
+    legsEl.innerHTML = bcbp.legs.map((l,i)=>{
+      const route = (l.from && l.to) ? `${l.from} &rarr; ${l.to}` : '';
+      const flt = l.carrier ? `${l.carrier} ${l.flight}` : l.flight;
+      const cabin = l.cabin ? `${l.cabin} (${l.compartment})` : l.compartment;
+      return `<div class="leg">
+        ${bcbp.legs.length>1?`<div class="legtag">FLIGHT ${i+1}</div>`:''}
+        <div class="grid">
+          ${field('Route', route, true)}
+          ${field('Flight', flt)}
+          ${field('Date', l.date)}
+          ${field('Seat', l.seat)}
+          ${field('Cabin', cabin)}
+          ${field('Booking ref (PNR)', l.pnr)}
+          ${field('Sequence', l.sequence)}
+          ${field('Check-in status', l.status)}
+        </div>
+      </div>`;
+    }).join('');
+    resultEl.style.display='block';
+  }
+
+  // --- Image -> ImageData variants ----------------------------------------
+  const MAX_DIM = 4000;
+  function imageDataFrom(img, scale, contrast){
+    let w = Math.round(img.naturalWidth*scale), h = Math.round(img.naturalHeight*scale);
+    const longest = Math.max(w,h);
+    if(longest > MAX_DIM){ const k = MAX_DIM/longest; w=Math.round(w*k); h=Math.round(h*k); }
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx = c.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0,w,h);
+    const id = ctx.getImageData(0,0,w,h);
+    if(contrast){
+      const d=id.data; let min=255,max=0;
+      for(let i=0;i<d.length;i+=4){ const g=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])|0; d[i]=d[i+1]=d[i+2]=g; if(g<min)min=g; if(g>max)max=g; }
+      const range=Math.max(1,max-min);
+      for(let i=0;i<d.length;i+=4){ const v=((d[i]-min)*255/range)|0; d[i]=d[i+1]=d[i+2]=v; }
+    }
+    return id;
+  }
+  function loadImage(src){
+    return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+  }
+
+  async function decode(img){
+    // The engine already rotates/inverts/downscales internally, so a few
+    // resolution + contrast variants are enough to crack tough phone photos.
+    const variants = [
+      ['original',        ()=>imageDataFrom(img,1,false)],
+      ['high contrast',   ()=>imageDataFrom(img,1,true)],
+      ['2x upscale',      ()=>imageDataFrom(img,2,false)],
+      ['2x + contrast',   ()=>imageDataFrom(img,2,true)],
+    ];
+    for(let i=0;i<variants.length;i++){
+      const [name, build] = variants[i];
+      setStatus(`Scanning... (${name})`, 'work');
+      await new Promise(r=>setTimeout(r,0));
+      try{
+        const results = await ZXingWASM.readBarcodes(build(), READER_OPTS);
+        const hit = (results||[]).find(r=>r.text);
+        if(hit) return hit;
+      }catch(e){ /* try next variant */ }
+    }
+    return null;
+  }
+
+  async function handleImage(src){
+    resultEl.style.display='none'; rawEl.style.display='none';
+    previewImg.src = src; previewEl.style.display='block';
+    setStatus('Scanning...','work');
+    let img;
+    try{ img = await loadImage(src); }
+    catch(e){ setStatus('Could not load that image.','err'); return; }
+
+    const hit = await decode(img);
+    if(!hit){
+      setStatus('Could not read a barcode. Try a sharper, straight-on photo with the barcode filling the frame and no glare. A screenshot of a mobile pass works best.','err');
+      return;
+    }
+    lastRaw = hit.text;
+    const bcbp = parseBCBP(lastRaw);
+    rawEl.innerHTML = `<b>Raw barcode (${hit.format||'?'}):</b><br>${lastRaw.replace(/</g,'&lt;')}`;
+    rawEl.style.display='block';
+    if(bcbp){ setStatus('Boarding pass decoded.','ok'); render(bcbp); }
+    else{ setStatus('Barcode read, but it is not a standard boarding pass. Raw contents shown below.','ok'); }
+  }
+
+  function handleFile(f){
+    if(!f || !f.type.startsWith('image/')){ setStatus('Please choose an image file.','err'); return; }
+    const r = new FileReader();
+    r.onload = e => handleImage(e.target.result);
+    r.readAsDataURL(f);
+  }
+
+  // events
+  dropEl.addEventListener('click', ()=>fileEl.click());
+  fileEl.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+  dropEl.addEventListener('dragover', e=>{e.preventDefault();dropEl.classList.add('hover');});
+  dropEl.addEventListener('dragleave', ()=>dropEl.classList.remove('hover'));
+  dropEl.addEventListener('drop', e=>{
+    e.preventDefault(); dropEl.classList.remove('hover');
+    if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  window.addEventListener('paste', e=>{
+    for(const it of e.clipboardData.items){ if(it.type.startsWith('image/')){ handleFile(it.getAsFile()); break; } }
+  });
+  copyBtn.addEventListener('click', ()=>{
+    navigator.clipboard.writeText(lastRaw).then(()=>{
+      copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy raw barcode data',1500);
+    });
+  });
+})();
+</script>
+</body>
+</html>

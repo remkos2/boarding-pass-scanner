@@ -19,3 +19,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+This MIT license covers the original code in this project (index.html and the
+documentation). The bundled barcode-decoding engine in the lib/ folder is
+third-party open-source software with its own licenses. See
+THIRD-PARTY-NOTICES.md for full attribution.
