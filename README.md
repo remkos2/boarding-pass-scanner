@@ -2,7 +2,7 @@
 
 Read the barcode on a flight boarding pass straight from a photo, entirely in your browser. Drop in a picture and it shows the passenger, route, flight, date, seat, cabin class and booking reference. Nothing is uploaded and there is no server.
 
-**Live demo:** https://remkos2.github.io/boarding-pass-scanner/
+**Live demo:** https://remkostas.github.io/boarding-pass-scanner/
 
 ## What it does
 
