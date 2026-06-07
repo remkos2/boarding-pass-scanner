@@ -41,7 +41,7 @@ For the best result use a sharp, straight-on photo with the barcode filling the 
 I built this to sit on my own website, which runs on Google Sites. Google Sites cannot host a multi-file app directly, so it loads the published page inside a frame. This is the embed I use, pointing at my own deployed copy:
 
 ```html
-<iframe src="https://remkos2.github.io/boarding-pass-scanner/"
+<iframe src="https://remkostas.github.io/boarding-pass-scanner/"
         style="width:100%;height:900px;border:0;"
         allow="clipboard-read; clipboard-write"></iframe>
 ```
